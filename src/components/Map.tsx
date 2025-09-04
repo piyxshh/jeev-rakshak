@@ -5,7 +5,6 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 
-// Leaflet's default icons can break in Next.js, so we fix them
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 
@@ -18,18 +17,15 @@ let DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// Define the type for our reports
 type Report = {
   id: number;
-  location: {
-    type: 'Point';
-    coordinates: [number, number]; // [longitude, latitude]
-  };
+  // Supabase returns GeoJSON as a string, but when parsed it's an object.
+  // We'll keep it as `any` and safely check it.
+  location: any; 
   symptom: string;
   created_at: string;
 }
 
-// The Map component itself
 export default function Map({ reports }: { reports: Report[] }) {
   const position: [number, number] = [22.5726, 88.3639] // Default to Kolkata
 
@@ -39,17 +35,23 @@ export default function Map({ reports }: { reports: Report[] }) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      {reports.map(report => (
-        <Marker 
-          key={report.id} 
-          position={[report.location.coordinates[1], report.location.coordinates[0]]} // Leaflet uses [lat, lon]
-        >
-          <Popup>
-            <b>Report ID: {report.id}</b><br/>
-            Symptom: {report.symptom}<br/>
-            Reported at: {new Date(report.created_at).toLocaleString()}
-          </Popup>
-        </Marker>
+      
+      {/* 👇 THIS IS THE FIX 👇 */}
+      {/* We first filter the array to only include reports that have a valid location and coordinates */}
+      {reports
+        .filter(report => report.location && report.location.coordinates)
+        .map(report => (
+          <Marker 
+            key={report.id} 
+            // Now we know report.location.coordinates exists
+            position={[report.location.coordinates[1], report.location.coordinates[0]]} 
+          >
+            <Popup>
+              <b>Report ID: {report.id}</b><br/>
+              Symptom: {report.symptom}<br/>
+              Reported at: {new Date(report.created_at).toLocaleString()}
+            </Popup>
+          </Marker>
       ))}
     </MapContainer>
   )

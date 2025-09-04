@@ -5,10 +5,17 @@ import { useState, useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useRouter } from 'next/navigation'
 import { User, RealtimePostgresChangesPayload } from '@supabase/supabase-js'
-import { LayoutDashboard, LogOut, MapPin, Bell, AlertTriangle } from 'lucide-react'
 import dynamic from 'next/dynamic'
-import ActionModal from '@/components/ActionModal'
 import toast, { Toaster } from 'react-hot-toast'
+
+// 👇 FIX: Added ShieldAlert to this line
+import { 
+  LayoutDashboard, LogOut, MapPin, Bell, AlertTriangle, 
+  Home, ShieldCheck, BookOpen, AlertCircle, CheckCircle, Video, ArrowRight, ShieldAlert
+} from 'lucide-react'
+
+// Import components
+import ActionModal from '@/components/ActionModal'
 
 // Define types for our data
 type Profile = {
@@ -32,90 +39,229 @@ const Map = dynamic(() => import('@/components/Map'), {
 })
 
 // ====================================================================
-// 🧑‍🌾 FARMER DASHBOARD COMPONENT
+// 🧑‍🌾 FARMER DASHBOARD COMPONENT (Final Polished UI)
 // ====================================================================
 function FarmerDashboard({ user, supabase }: { user: User, supabase: any }) {
-    const [loading, setLoading] = useState(false);
+    const [activeTab, setActiveTab] = useState('home');
     const router = useRouter();
 
     useEffect(() => {
       const channelName = `farmer-alerts:${user.id}`;
       const channel = supabase.channel(channelName);
-
       channel.on('broadcast', { event: 'new-alert' }, (payload: { payload: { message: string } }) => {
-        toast.error(payload.payload.message, {
-          duration: 10000,
-          icon: '🚨',
-        });
+        toast.error(payload.payload.message, { duration: 10000, icon: '🚨' });
       }).subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
+      return () => { supabase.removeChannel(channel); };
     }, [supabase, user.id]);
 
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+        router.push('/');
+    };
+    
+    const renderContent = () => {
+        switch (activeTab) {
+            case 'checklist': return <ChecklistScreen />;
+            case 'education': return <EducationScreen />;
+            case 'alerts': return <AlertsScreen />;
+            case 'home':
+            default:
+                return <HomeScreen user={user} supabase={supabase} />;
+        }
+    };
+
+    return (
+        <>
+            <Toaster position="top-center" />
+            <div className="w-full max-w-lg mx-auto bg-gray-100 font-sans h-screen flex flex-col shadow-2xl">
+                {/* Header */}
+                <header className="p-4 flex justify-between items-center bg-white border-b border-gray-200">
+                    <div>
+                        <h1 className="text-2xl font-extrabold" style={{color: '#0D2B4D'}}>Jeev Rakshak</h1>
+                    </div>
+                    <button onClick={handleLogout} className="p-2 rounded-full hover:bg-gray-100">
+                        <LogOut size={22} className="text-gray-500" />
+                    </button>
+                </header>
+                
+                {/* Main Content Area (Scrollable) */}
+                <main className="flex-1 overflow-y-auto">
+                    {renderContent()}
+                </main>
+
+                {/* Bottom Navigation */}
+                <nav className="grid grid-cols-4 gap-1 p-2 bg-white border-t border-gray-200">
+                    <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center py-2 rounded-lg transition-colors duration-200 ${activeTab === 'home' ? 'text-green-600 bg-green-50' : 'text-gray-500'}`}>
+                        <Home size={24} />
+                        <span className="text-xs font-bold mt-1">Home</span>
+                    </button>
+                    <button onClick={() => setActiveTab('checklist')} className={`flex flex-col items-center py-2 rounded-lg transition-colors duration-200 ${activeTab === 'checklist' ? 'text-green-600 bg-green-50' : 'text-gray-500'}`}>
+                        <ShieldCheck size={24} />
+                        <span className="text-xs font-bold mt-1">Checklist</span>
+                    </button>
+                    <button onClick={() => setActiveTab('education')} className={`flex flex-col items-center py-2 rounded-lg transition-colors duration-200 ${activeTab === 'education' ? 'text-green-600 bg-green-50' : 'text-gray-500'}`}>
+                        <BookOpen size={24} />
+                        <span className="text-xs font-bold mt-1">Learn</span>
+                    </button>
+                    <button onClick={() => setActiveTab('alerts')} className={`flex flex-col items-center py-2 rounded-lg transition-colors duration-200 ${activeTab === 'alerts' ? 'text-green-600 bg-green-50' : 'text-gray-500'}`}>
+                        <Bell size={24} />
+                        <span className="text-xs font-bold mt-1">Alerts</span>
+                    </button>
+                </nav>
+            </div>
+        </>
+    );
+}
+
+// --- Polished Placeholder Screen Components ---
+
+const CircularProgress = ({ score }: { score: number }) => {
+    const sqSize = 140;
+    const strokeWidth = 12;
+    const radius = (sqSize - strokeWidth) / 2;
+    const viewBox = `0 0 ${sqSize} ${sqSize}`;
+    const dashArray = radius * Math.PI * 2;
+    const dashOffset = dashArray - (dashArray * score) / 100;
+
+    return (
+        <svg width={sqSize} height={sqSize} viewBox={viewBox}>
+            <circle
+                className="stroke-current text-gray-200"
+                cx={sqSize / 2} cy={sqSize / 2} r={radius}
+                strokeWidth={`${strokeWidth}px`} fill="none"
+            />
+            <circle
+                className="stroke-current text-green-500"
+                cx={sqSize / 2} cy={sqSize / 2} r={radius}
+                strokeWidth={`${strokeWidth}px`} fill="none"
+                strokeLinecap="round" strokeLinejoin="round"
+                transform={`rotate(-90 ${sqSize / 2} ${sqSize / 2})`}
+                style={{ strokeDasharray: dashArray, strokeDashoffset: dashOffset, transition: 'stroke-dashoffset 0.5s ease-in-out' }}
+            />
+            <text
+                className="fill-current text-3xl font-bold text-green-700"
+                x="50%" y="50%" dy=".3em" textAnchor="middle">
+                {`${score}`}
+            </text>
+        </svg>
+    );
+};
+
+
+const HomeScreen = ({ user, supabase }: { user: User, supabase: any }) => {
+    const [loading, setLoading] = useState(false);
+    
     const handleReportSickness = async () => {
         setLoading(true);
         navigator.geolocation.getCurrentPosition(
         async (position) => {
             const { latitude, longitude } = position.coords;
             const location = `POINT(${longitude} ${latitude})`;
-
-            const { error } = await supabase.from('reports').insert({
-              reporter_id: user.id,
-              location: location,
-              symptom: 'Initial Report'
-            });
-
-            if (error) {
-              alert(error.message);
-            } else {
-              toast.success('Report submitted successfully!');
-            }
+            const { error } = await supabase.from('reports').insert({ reporter_id: user.id, location: location, symptom: 'Initial Report' });
+            if (error) { alert(error.message); } else { toast.success('Report submitted successfully!'); }
             setLoading(false);
         },
         (error) => {
-            alert(`Error getting location: ${error.message}`);
-            setLoading(false);
+            alert(`Error getting location: ${error.message}`); setLoading(false);
         }
         );
     };
 
-    const handleLogout = async () => {
-        await supabase.auth.signOut();
-        router.push('/');
+    return (
+        <div className="p-4 space-y-4">
+            <div className="p-6 bg-white rounded-xl shadow-md text-center">
+                <p className="text-gray-500 font-semibold mb-2">Your Biosecurity Level</p>
+                <div className="flex items-center justify-center">
+                    <CircularProgress score={85} />
+                </div>
+                <p className="mt-2 text-lg font-bold text-green-700">Level 5: Guardian</p>
+            </div>
+            
+            <div className="p-6 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl shadow-xl text-center text-white">
+                <div className="flex justify-center items-center">
+                    <ShieldAlert size={32} className="text-white" />
+                    <h2 className="text-3xl font-bold ml-2">EMERGENCY</h2>
+                </div>
+                <p className="mt-2 mb-4 opacity-90">Report a suspected disease outbreak immediately.</p>
+                <button
+                    onClick={handleReportSickness}
+                    disabled={loading}
+                    className="w-full py-4 bg-white text-red-600 font-bold text-lg rounded-lg shadow-lg transition-transform transform hover:scale-105 active:scale-95 disabled:opacity-50 animate-pulse"
+                >
+                    {loading ? 'Submitting...' : 'SUBMIT URGENT REPORT'}
+                </button>
+            </div>
+        </div>
+    );
+};
+const ChecklistScreen = () => {
+    const [checkedItems, setCheckedItems] = useState<number[]>([]);
+    const checklist = ['Clean water & feed containers', 'Check for pests (rodents, insects)', 'Disinfect footwear before entry', 'Inspect flock for signs of illness', 'Secure the farm perimeter'];
+
+    const toggleCheck = (index: number) => {
+        setCheckedItems(prev => prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]);
     };
 
     return (
-        <>
-            <Toaster position="top-center" />
-            <main className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
-              <div className="w-full max-w-md text-center">
-                  <div className="mb-8 p-6 bg-white rounded-2xl shadow-md">
-                    <h1 className="text-2xl font-bold text-gray-800">Welcome, Farmer!</h1>
-                    <p className="text-gray-500">Your phone: {user.phone}</p>
-                  </div>
-                  <button
-                    onClick={handleReportSickness}
-                    disabled={loading}
-                    className="w-48 h-48 bg-red-500 text-white rounded-full shadow-2xl flex flex-col items-center justify-center transition-transform transform hover:scale-105 active:scale-95 disabled:opacity-50"
-                  >
-                    <div className="text-5xl">🚨</div>
-                    <span className="mt-2 text-xl font-bold">
-                        {loading ? 'Submitting...' : 'Report Sickness'}
-                    </span>
-                  </button>
-                  <button
-                    onClick={handleLogout}
-                    className="mt-8 flex items-center justify-center mx-auto gap-2 text-gray-500 hover:text-red-600"
-                  >
-                    <LogOut size={16} /> Logout
-                  </button>
-              </div>
-            </main>
-        </>
+    <div className="p-6">
+        <h2 className="text-3xl font-bold text-gray-800 mb-4">Daily Checklist</h2>
+        <div className="space-y-3">
+            {checklist.map((item, index) => (
+                <div 
+                    key={index} 
+                    onClick={() => toggleCheck(index)}
+                    className="p-4 bg-white rounded-xl shadow-sm flex items-center justify-between cursor-pointer transition-all duration-200"
+                >
+                    <span className={`font-medium ${checkedItems.includes(index) ? 'text-gray-400 line-through' : 'text-gray-800'}`}>{item}</span>
+                    <div className={`w-7 h-7 flex items-center justify-center rounded-full transition-colors duration-200 ${checkedItems.includes(index) ? 'bg-green-500' : 'bg-gray-200'}`}>
+                        {checkedItems.includes(index) && <CheckCircle size={20} className="text-white" />}
+                    </div>
+                </div>
+            ))}
+        </div>
+    </div>
     );
-}
+};
+const EducationScreen = () => (
+    <div className="p-6">
+        <h2 className="text-3xl font-bold text-gray-800 mb-4">Learning Center</h2>
+        <div className="space-y-4">
+            {['Recognizing Avian Flu Symptoms', 'Best Practices for Disinfection', 'Safe Manure Management'].map((title, index) => (
+                <div key={index} className="bg-white rounded-xl shadow-sm overflow-hidden flex items-center p-3 cursor-pointer">
+                    <div className="w-20 h-20 bg-orange-100 rounded-lg flex items-center justify-center">
+                        <Video size={32} className="text-orange-500" />
+                    </div>
+                    <div className="pl-4 flex-1">
+                        <h3 className="font-bold text-gray-800">{title}</h3>
+                        <p className="text-sm text-gray-500 mt-1">Video • 5 mins</p>
+                    </div>
+                    <ArrowRight size={20} className="text-gray-400" />
+                </div>
+            ))}
+        </div>
+    </div>
+);
+const AlertsScreen = () => (
+    <div className="p-6">
+        <h2 className="text-3xl font-bold text-gray-800 mb-4">Alerts Inbox</h2>
+        <div className="space-y-4">
+            <div className="p-4 bg-red-100 border-l-4 border-red-500 rounded-r-lg">
+                <div className="flex items-center gap-3">
+                    <AlertCircle className="text-red-600" />
+                    <h3 className="font-bold text-red-800">High Alert: Avian Flu Suspected</h3>
+                </div>
+                <p className="text-sm text-red-700 mt-2 ml-9">A case has been reported within 10km of your farm. Isolate your flock immediately.</p>
+            </div>
+            <div className="p-4 bg-orange-100 border-l-4 border-orange-500 rounded-r-lg">
+                 <div className="flex items-center gap-3">
+                    <AlertCircle className="text-orange-600" />
+                    <h3 className="font-bold text-orange-800">Advisory: Increased Monitoring</h3>
+                </div>
+                <p className="text-sm text-orange-700 mt-2 ml-9">Increase biosecurity checks due to regional reports.</p>
+            </div>
+        </div>
+    </div>
+);
 
 // ====================================================================
 // 🏢 ADMIN DASHBOARD COMPONENT
@@ -125,31 +271,18 @@ function AdminDashboard({ user, supabase }: { user: User, supabase: any }) {
   const [reports, setReports] = useState<Report[]>([]);
   const [selectedReportId, setSelectedReportId] = useState<number | null>(null);
 
-  const handleOpenModal = (reportId: number) => {
-    setSelectedReportId(reportId);
-  };
-
-  const handleCloseModal = () => {
-    setSelectedReportId(null);
-  };
+  const handleOpenModal = (reportId: number) => { setSelectedReportId(reportId); };
+  const handleCloseModal = () => { setSelectedReportId(null); };
 
   useEffect(() => {
     const fetchReports = async () => {
       const { data, error } = await supabase.from('reports').select('*').order('created_at', { ascending: false });
       if (data) setReports(data);
-      if (error) console.error(error);
     };
     fetchReports();
 
-    const channel = supabase.channel('realtime reports').on('postgres_changes', 
-      { event: 'INSERT', schema: 'public', table: 'reports' }, 
-      (payload: RealtimePostgresChangesPayload<Report>) => {
-        setReports(currentReports => [payload.new as Report, ...currentReports]);
-        toast.success('New report received!');
-      }
-    ).subscribe();
-
-    return () => { supabase.removeChannel(channel); };
+    const intervalId = setInterval(() => { fetchReports(); }, 5000);
+    return () => { clearInterval(intervalId); };
   }, [supabase]);
 
   const handleLogout = async () => {
@@ -236,29 +369,23 @@ export default function DashboardPage() {
     useEffect(() => {
         const fetchProfile = async () => {
         const { data: { session } } = await supabase.auth.getSession();
-
         if (!session) {
             router.push('/');
             return;
         }
-        
         setUser(session.user);
-        
         const { data: profileData, error } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', session.user.id)
             .single();
-        
         if (error) {
             console.error("Error fetching profile:", error);
         } else {
             setProfile(profileData);
         }
-        
         setLoading(false);
         };
-
         fetchProfile();
     }, [supabase, router]);
     
