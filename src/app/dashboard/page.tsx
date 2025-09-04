@@ -173,32 +173,42 @@ const AlertsScreen = () => (
         </div>
     </div>
 );
+// This array is now defined once, outside the component.
+const conversationScript = [
+    { from: 'ai', text: 'Hello! I am your AI Biosecurity Assistant. How can I help you today?' },
+    { from: 'ai', text: 'নমস্কার! আমি আপনার AI বায়োসিকিউরিটি অ্যাসিস্ট্যান্ট। আমি আপনাকে কিভাবে সাহায্য করতে পারি?' },
+    { from: 'user', text: 'My chickens look sick. What should I do?' },
+    { from: 'ai', text: 'I understand. To help, please describe the symptoms. Are they coughing, lethargic, or showing unusual discharge?' },
+    { from: 'ai', text: 'আমি বুঝতে পারছি। সাহায্য করার জন্য, অনুগ্রহ করে লক্ষণগুলি বর্ণনা করুন। তারা কি কাশছে, অলস, বা অস্বাভাবিক স্রাব দেখাচ্ছে?' },
+];
+
 const AiGuideScreen = () => {
-    const conversationScript = [
-        { from: 'ai', text: 'Hello! I am your AI Biosecurity Assistant. How can I help you today?' },
-        { from: 'ai', text: 'নমস্কার! আমি আপনার AI বায়োসিকিউরিটি অ্যাসিস্ট্যান্ট। আমি আপনাকে কিভাবে সাহায্য করতে পারি?' },
-        { from: 'user', text: 'My chickens look sick. What should I do?' },
-        { from: 'ai', text: 'I understand. To help, please describe the symptoms. Are they coughing, lethargic, or showing unusual discharge?' },
-        { from: 'ai', text: 'আমি বুঝতে পারছি। সাহায্য করার জন্য, অনুগ্রহ করে লক্ষণগুলি বর্ণনা করুন। তারা কি কাশছে, অলস, বা অস্বাভাবিক স্রাব দেখাচ্ছে?' },
-    ];
     const [messages, setMessages] = useState([conversationScript[0], conversationScript[1]]);
     const [step, setStep] = useState(2);
+
     useEffect(() => {
-        if (step > conversationScript.length) return;
+        if (step >= conversationScript.length) return; // Use >= to prevent out-of-bounds
         const nextMessage = conversationScript[step];
         const timer = setTimeout(() => {
             setMessages(prev => [...prev, nextMessage]);
             setStep(prev => prev + 1);
-        }, nextMessage.from === 'ai' ? 1500 : 500);
+        }, nextMessage.from === 'ai' ? 1500 : 500); 
+
         return () => clearTimeout(timer);
-    }, [step, conversationScript]);
+    // The dependency array is now stable because conversationScript is defined outside.
+    }, [step]);
+
     return (
         <div className="p-4 h-full flex flex-col">
             <h2 className="text-3xl font-bold text-gray-800 mb-4 text-center">AI Guide</h2>
             <div className="flex-1 bg-white rounded-xl shadow-inner p-4 space-y-4 overflow-y-auto">
                 {messages.map((msg, index) => (
                     <div key={index} className={`flex ${msg.from === 'ai' ? 'justify-start' : 'justify-end'}`}>
-                        <div className={`max-w-[80%] p-3 rounded-2xl ${msg.from === 'ai' ? 'bg-green-100 text-gray-800 rounded-bl-none' : 'bg-orange-500 text-white rounded-br-none'}`}>
+                        <div className={`max-w-[80%] p-3 rounded-2xl ${
+                            msg.from === 'ai' 
+                            ? 'bg-green-100 text-gray-800 rounded-bl-none' 
+                            : 'bg-orange-500 text-white rounded-br-none'
+                        }`}>
                             <p>{msg.text}</p>
                         </div>
                     </div>
