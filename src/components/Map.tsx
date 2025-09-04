@@ -4,11 +4,10 @@
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
-
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 
-let DefaultIcon = L.icon({
+const DefaultIcon = L.icon({
     iconUrl: icon.src,
     shadowUrl: iconShadow.src,
     iconSize: [25, 41],
@@ -17,11 +16,15 @@ let DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
+// Define a specific type for GeoJSON Point data
+type GeoJSONPoint = {
+  type: 'Point';
+  coordinates: [number, number]; // [longitude, latitude]
+}
+
 type Report = {
   id: number;
-  // Supabase returns GeoJSON as a string, but when parsed it's an object.
-  // We'll keep it as `any` and safely check it.
-  location: any; 
+  location: GeoJSONPoint; // Use the specific type
   symptom: string;
   created_at: string;
 }
@@ -36,14 +39,11 @@ export default function Map({ reports }: { reports: Report[] }) {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       
-      {/* 👇 THIS IS THE FIX 👇 */}
-      {/* We first filter the array to only include reports that have a valid location and coordinates */}
       {reports
         .filter(report => report.location && report.location.coordinates)
         .map(report => (
           <Marker 
             key={report.id} 
-            // Now we know report.location.coordinates exists
             position={[report.location.coordinates[1], report.location.coordinates[0]]} 
           >
             <Popup>
